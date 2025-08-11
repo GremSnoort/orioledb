@@ -402,7 +402,7 @@ exec_bitmap_index_state(OBitmapHeapPlanState *bitmap_state, PlanState *planstate
 				OBTreeKeyBound end_bound;
 				TupleTableSlot *primarySlot;
 				EState	   *estate;
-				ExprContext *econtext;
+				ExprContext *tup_econtext;
 				ExprState  *bitmapqualorig_state;
 				CommitSeqNo tupleCsn;
 
@@ -430,7 +430,7 @@ exec_bitmap_index_state(OBitmapHeapPlanState *bitmap_state, PlanState *planstate
 				primarySlot = MakeSingleTupleTableSlot(tbl_descr->tupdesc, &TTSOpsOrioleDB);
 
 				estate = CreateExecutorState();
-				econtext = GetPerTupleExprContext(estate);
+				tup_econtext = GetPerTupleExprContext(estate);
 
 				bitmapqualorig_state = ExecInitQual(bitmap_state->bitmapqualorig, NULL);
 				do
@@ -469,12 +469,12 @@ exec_bitmap_index_state(OBitmapHeapPlanState *bitmap_state, PlanState *planstate
 						tts_orioledb_store_tuple(primarySlot, ptup, tbl_descr, tupleCsn,
 												 PrimaryIndexNumber, true, NULL);
 						slot_getallattrs(primarySlot);
-						econtext->ecxt_scantuple = primarySlot;
-						if (!ExecQual((ExprState *) bitmapqualorig_state, econtext))
+						tup_econtext->ecxt_scantuple = primarySlot;
+						if (!ExecQual((ExprState *) bitmapqualorig_state, tup_econtext))
 						{
 							pfree(tup.data);
 							ExecClearTuple(primarySlot);
-							MemoryContextReset(econtext->ecxt_per_tuple_memory);
+							MemoryContextReset(tup_econtext->ecxt_per_tuple_memory);
 							continue;
 						}
 					}
@@ -484,7 +484,7 @@ exec_bitmap_index_state(OBitmapHeapPlanState *bitmap_state, PlanState *planstate
 
 					pfree(tup.data);
 					ExecClearTuple(primarySlot);
-					MemoryContextReset(econtext->ecxt_per_tuple_memory);
+					MemoryContextReset(tup_econtext->ecxt_per_tuple_memory);
 				} while (true);
 
 				ExecDropSingleTupleTableSlot(primarySlot);
